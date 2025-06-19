@@ -54,8 +54,7 @@ jobs:
       AWS_REGION: ${{ github.event.pull_request.base.ref == 'production' && vars.AWS_PROD_REGION || vars.AWS_DEV_REGION }}
       AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
       AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
-      DOCKERFILE_PATH: ${{ vars.DOCKERFILE_PATH }}
-
+      DOCKERFILE_PATH: ${{ vars.DOCKERFILE_PATH || '.' }}
   # deploy-to-eks:
   #   uses: ./.github/workflows/eks-deploy.yaml
   #   with:

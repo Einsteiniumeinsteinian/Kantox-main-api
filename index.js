@@ -42,7 +42,6 @@ app.use((req, res, next) => {
   next();
 });
 
-
 // Metrics endpoint for Prometheus
 app.get('/metrics', async (req, res) => {
   try {

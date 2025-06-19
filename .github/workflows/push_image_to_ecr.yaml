@@ -131,6 +131,10 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "LATEST_VERSION=$LATEST_VERSION" >> $GITHUB_ENV
 
+      - name: Set up Docker Buildx
+        if: env.IMAGE_EXISTS == 'false'
+        uses: docker/setup-buildx-action@v3
+
       - name: Build Docker image
         if: env.IMAGE_EXISTS == 'false'
         run: |
@@ -139,7 +143,10 @@ jobs:
           IMAGE_URI="${{ steps.login-ecr.outputs.registry }}/${{ inputs.AWS_ECR_REPOSITORY }}:${{ github.sha }}"
           echo "Building image: $IMAGE_URI"
           
-          docker build -t "$IMAGE_URI" ${{ inputs.DOCKERFILE_PATH }}
+          docker build \
+            --tag "$IMAGE_URI" \
+            --platform linux/amd64 \
+            ${{ inputs.DOCKERFILE_PATH }}
           
           echo "✅ Docker image built successfully"
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV

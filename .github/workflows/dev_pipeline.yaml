@@ -1,0 +1,143 @@
+name: Deploy to ECR Repository
+run-name: >
+  ${{ github.sha }} - "${{ github.event_name == 'pull_request' && github.event.pull_request.title || github.event.head_commit.message }}"
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - Development
+      - production
+      - feat/github-workflow
+      - 'release*'
+    paths-ignore:
+      - '**/README.md'
+      - 'docs'
+      - '.dockerignore'
+      - '.gitignore'
+      - 'Makefile'
+
+jobs:
+  application_code_test:
+    name: Application Code Test
+    uses: ./.github/workflows/application_code_test.yaml
+  test_image_deployment: 
+    name: Test Image Deployment
+    # needs: application_code_test
+    uses: ./.github/workflows/test_image_deployment.yaml
+  re_tag_current_latest:
+    name: Re-tag Current Dev Image from latest
+    uses: ./.github/workflows/re_tag_current_image.yaml
+    needs: [application_code_test, test_image_deployment]
+    with:
+      AWS_ECR_REPOSITORY: ${{ github.event.pull_request.base.ref == 'production' && vars.AWS_PROD_ECR_REPOSITORY || vars.AWS_DEV_ECR_REPOSITORY }}
+      AWS_REGION: ${{ github.event.pull_request.base.ref == 'production' && vars.AWS_PROD_REGION || vars.AWS_DEV_REGION }}
+      IMAGE_TAG_SUFFIX: ${{ vars.IMAGE_TAG_SUFFIX }}
+    secrets: 
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_DEV_ACCESS_KEY_ID }}
+      AWS_SECRET_KEY: ${{ secrets.AWS_DEV_SECRET_KEY }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+
+  push_to_ecr:
+    name: Push to Dev ecr registry
+    needs: re_tag_current_latest
+    uses: ./.github/workflows/push_image_to_ecr.yaml
+    with:
+      IMAGE_TAG_SUFFIX: ${{ vars.IMAGE_TAG_SUFFIX }}
+      ENVIRONMENT: ${{ github.event.pull_request.base.ref }}
+      AWS_ECR_REPOSITORY: ${{ github.event.pull_request.base.ref == 'production' && vars.AWS_PROD_ECR_REPOSITORY || vars.AWS_DEV_ECR_REPOSITORY }}
+      AWS_REGION: ${{ github.event.pull_request.base.ref == 'production' && vars.AWS_PROD_REGION || vars.AWS_DEV_REGION }}
+    secrets: 
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_DEV_ACCESS_KEY_ID }}
+      AWS_SECRET_KEY: ${{ secrets.AWS_DEV_SECRET_KEY }}
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+
+  # debug-notify-slack:
+  #   runs-on: ubuntu-latest
+  #   needs: [re_tag_current_latest, push_to_ecr]
+  #   steps:
+  #     - name: Debugger Inputs
+  #       run: |
+  #         echo "🔍 Debugging Needs Inputs for Notify Slack"
+
+  #         echo "=== re_tag_current_latest ==="
+  #         echo "needs.re_tag_current_latest: ${{ toJson(needs.re_tag_current_latest) }}"
+  #         echo "result: ${{ needs.re_tag_current_latest.result }}"
+  #         echo "outputs: ${{ toJson(needs.re_tag_current_latest.outputs) }}"
+
+  #         echo "=== push_to_ecr ==="
+  #         echo "needs.re_tag_current_latest: ${{ toJson(needs.push_to_ecr) }}"
+  #         echo "result: ${{ needs.push_to_ecr.result }}"
+  #         echo "outputs: ${{ toJson(needs.push_to_ecr.outputs) }}"
+
+  #         echo "=== Combined Status ==="
+  #         echo "status: ${{ needs.re_tag_current_latest.result == 'success' && needs.push_to_ecr.result == 'success' && 'success' || 'failure' }}"
+
+  #         echo "=== Logs ==="
+  #         echo "logs: ${{ needs.re_tag_current_latest.result == 'failure' && 'Re-tag Current Image Failed' || '' }}${{ needs.push_to_ecr.result == 'failure' && ' Push to ECR Failed' || '' }}"
+
+  #         echo "=== Message ==="
+  #         echo "message: ${{ needs.re_tag_current_latest.result == 'success' && needs.push_to_ecr.result == 'success' && '✅ *Deployment Successful* ✅' || '❌ *Deployment Failed* ❌' }}"
+
+  #         echo "=== Color ==="
+  #         echo "color: ${{ needs.re_tag_current_latest.result == 'success' && needs.push_to_ecr.result == 'success' && '#36a64f' || '#ff0000' }}"
+
+  # notify-slack:
+  #   name: Notify Slack
+  #   needs: [re_tag_current_latest, push_to_ecr]
+  #   if: always()
+  #   uses: ./.github/workflows/notify-slack.yaml
+  #   with:
+  #     status: ${{ needs.re_tag_current_latest.result == 'success' && needs.push_to_ecr.result == 'success' && 'success' || 'failure' }}
+  #     repository: ${{ github.repository }}
+  #     branch: ${{ github.ref_name }}
+  #     commit: ${{ github.sha }}
+  #     actor: ${{ github.actor }}
+  #     workflow: ${{ github.workflow }}
+  #     run_id: ${{ github.run_id }}
+  #     logs: ${{ needs.re_tag_current_latest.result == 'failure' && 'Re-tag Current Image Failed' || '' }}${{ needs.push_to_ecr.result == 'failure' && ' Push to ECR Failed' || '' }}
+  #     color: ${{ needs.re_tag_current_latest.result == 'success' && needs.push_to_ecr.result == 'success' && '#36a64f' || '#ff0000' }}
+  #     message: ${{ needs.re_tag_current_latest.result == 'success' && needs.push_to_ecr.result == 'success' && '✅ *Deployment Successful* ✅' || '❌ *Deployment Failed* ❌' }}
+  #   secrets:
+  #     SLACK_WEBHOOK_URL: ${{ secrets.BUILD_SLACK_WEBHOOK_URL }}
+
+  notify-slack:
+    name: Notify Slack
+    needs: [application_code_test, test_image_deployment, re_tag_current_latest, push_to_ecr]
+    if: always()
+    uses: ./.github/workflows/notify-slack.yaml
+    with:
+      status: ${{ 
+        needs.application_code_test.result == 'success' &&
+        needs.test_image_deployment.result == 'success' &&
+        needs.re_tag_current_latest.result == 'success' &&
+        needs.push_to_ecr.result == 'success' 
+        && 'success' || 'failure' 
+       }}
+      repository: ${{ github.repository }}
+      branch: ${{ github.ref_name }}
+      commit: ${{ github.sha }}
+      actor: ${{ github.actor }}
+      workflow: ${{ github.workflow }}
+      run_id: ${{ github.run_id }}
+      logs: > 
+        ${{ needs.application_code_test.result == 'failure' && 'Application Code Test Failed\n' || '' }}
+        ${{ needs.test_image_deployment.result == 'failure' && 'Test Image Deployment Failed\n' || '' }}
+        ${{ needs.re_tag_current_latest.result == 'failure' && 'Re-tag Current Image Failed\n' || '' }}
+        ${{ needs.push_to_ecr.result == 'failure' && 'Push to ECR Failed\n' || '' }}
+      color: ${{ 
+        needs.application_code_test.result == 'success' &&
+        needs.test_image_deployment.result == 'success' &&
+        needs.re_tag_current_latest.result == 'success' &&
+        needs.push_to_ecr.result == 'success' 
+        && '#36a64f' || '#ff0000' 
+       }}
+      message: ${{ 
+        needs.application_code_test.result == 'success' &&
+        needs.test_image_deployment.result == 'success' &&
+        needs.re_tag_current_latest.result == 'success' &&
+        needs.push_to_ecr.result == 'success' 
+        && '✅ *Deployment Successful* ✅' || '❌ *Deployment Failed* ❌' 
+        }}
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.BUILD_SLACK_WEBHOOK_URL }}

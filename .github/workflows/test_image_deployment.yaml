@@ -1,0 +1,19 @@
+name: Test Image Deployment
+
+on:
+  workflow_call:
+
+jobs:
+  test_image_deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build the Docker image
+        run: |
+          docker build -t test-image-deployment-build .
+      
+      - name: Run Built Image 
+        run: |
+          docker run -d --name test-image-deployment-container test-image-deployment-build

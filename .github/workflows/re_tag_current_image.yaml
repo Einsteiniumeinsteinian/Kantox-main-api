@@ -1,0 +1,78 @@
+name: Re-tag Current Image from latest
+
+on:
+  workflow_call:
+    inputs:
+      AWS_ECR_REPOSITORY:
+        required: true
+        type: string
+        description: 'AWS ECR Repository'
+      AWS_REGION:
+        required: true
+        type: string
+        description: 'AWS Account Region'
+      IMAGE_TAG_SUFFIX:
+        required: true
+        type: string
+        description: 'IMAGE_TAG_NAME'
+        default: 'latest'
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        description: 'AWS Access Key ID'
+        required: true
+      AWS_SECRET_KEY:
+        description: 'AWS Secret Access Key'
+        required: true
+      AWS_ACCOUNT_ID:
+        description: 'AWS Account ID'
+        required: true
+
+jobs:
+  re_tag_current_latest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: ${{ inputs.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        run: |
+          aws ecr get-login-password --region ${{ inputs.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ inputs.AWS_REGION }}.amazonaws.com
+
+      - name: Check for 'latest' Tag in ECR and Re-tag if Exists
+        run: |
+          set -e  # Fail on error
+          set -o pipefail  # Fail if any part of a pipe fails
+
+          # Fetch image manifest for 'latest' tag if it exists
+          IMAGE_MANIFEST=$(aws ecr batch-get-image \
+            --repository-name "${{ inputs.AWS_ECR_REPOSITORY }}" \
+            --region "${{ inputs.AWS_REGION }}" \
+            --image-ids imageTag="${{ inputs.IMAGE_TAG_SUFFIX }}" \
+            --query 'images[0].imageManifest' \
+            --output text \
+             --no-cli-pager)
+
+          echo "IMAGE_EXISTS: $IMAGE_MANIFEST"
+
+          if  [ "$IMAGE_MANIFEST" != "None" ]; then
+            echo "Image with tag '${{ inputs.IMAGE_TAG_SUFFIX }}' exists. Deleting the image..."
+
+            # Delete the image with 'latest' tag
+            echo "Deleting latest tag"
+
+            aws ecr batch-delete-image \
+              --repository-name "${{ inputs.AWS_ECR_REPOSITORY }}" \
+              --image-ids imageTag="${{ inputs.IMAGE_TAG_SUFFIX }}" \
+              --region "${{ inputs.AWS_REGION }}" \
+              --no-cli-pager
+          else
+            echo "Image with Tag '${{ inputs.IMAGE_TAG_SUFFIX }}' Does Not Exist: Skipping Re-tag"
+          fi

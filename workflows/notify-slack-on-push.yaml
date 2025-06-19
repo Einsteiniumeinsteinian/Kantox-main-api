@@ -1,0 +1,119 @@
+name: Alert on Direct Push to Dev and Prod
+run-name: >
+  ${{ github.sha }} - "${{ github.event_name == 'pull_request' && github.event.pull_request.title || github.event.head_commit.message }}"
+on:
+  workflow_call:
+    inputs:
+      repository:
+        required: true
+        type: string
+        description: 'GitHub repository name'
+      branch:
+        required: true
+        type: string
+        description: 'GitHub branch name'
+      commit:
+        required: true
+        type: string
+        description: 'GitHub commit SHA'
+      actor:
+        required: true
+        type: string
+        description: 'GitHub actor (user who triggered the workflow)'
+      event_name:
+        required: true
+        type: string
+        description: 'GitHub event name'
+      workflow:
+        required: true
+        type: string
+        description: 'GitHub workflow name'
+      run_id:
+        required: true
+        type: string
+        description: 'GitHub workflow run ID'
+      before:
+        required: true
+        type: string
+        description: 'Previous commit SHA'
+    secrets:
+      SLACK_WEBHOOK_URL:
+        required: true
+
+jobs:
+  notify-slack-on-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack for Push
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }} # Slack webhook URL
+          webhook-type: webhook-trigger
+          payload: |
+            {
+              "username": "GitHub Push Bot", # Bot username (root level)
+              "icon_emoji": ":github:", # Bot icon (root level)
+              "attachments": [
+                {
+                  "color": "#ff0000", # Red color for urgency
+                  "blocks": [
+                    {
+                      "type": "section",
+                      "text": {
+                        "type": "mrkdwn",
+                        "text": "🚨 *Direct Push Detected!* 🚨"
+                      }
+                    },
+                    {
+                      "type": "section",
+                      "fields": [
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Repository:*\n<https://github.com/${{ inputs.repository }}|${{ inputs.repository }}>"
+                        },
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Branch:*\n<https://github.com/${{ inputs.repository }}/tree/${{ inputs.branch }}|`${{ inputs.branch }}`>"
+                        },
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Commit:*\n<https://github.com/${{ inputs.repository }}/commit/${{ inputs.commit }}|`${{ inputs.commit }}`>"
+                        },
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Author:*\n${{ inputs.actor }}"
+                        },
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Event Name:*\n`${{ inputs.event_name }}`"
+                        },
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Workflow:*\n`${{ inputs.workflow }}`"
+                        },
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Build Logs:*\n<https://github.com/${{ inputs.repository }}/actions/runs/${{ inputs.run_id }}|View Logs>"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "section",
+                      "text": {
+                        "type": "mrkdwn",
+                        "text": "*Compare Changes:*\n<https://github.com/${{ inputs.repository }}/compare/${{ inputs.before }}...${{ inputs.commit }}|View Changes>"
+                      }
+                    },
+                    {
+                      "type": "context",
+                      "elements": [
+                        {
+                          "type": "mrkdwn",
+                          "text": "This is a high-priority notification. Please review the changes."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }

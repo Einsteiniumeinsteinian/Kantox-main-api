@@ -37,7 +37,6 @@ jobs:
       IMAGE_TAG_SUFFIX: ${{ vars.IMAGE_TAG_SUFFIX }}
       AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
       AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
-
   push_to_ecr:
     name: Push to Dev ecr registry
     needs: re_tag_current_latest

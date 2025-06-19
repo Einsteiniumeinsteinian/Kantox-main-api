@@ -48,7 +48,7 @@ jobs:
       id-token: write
       contents: read
     with:
-      IMAGE_TAG_SUFFIX: ${{ vars.IMAGE_TAG_SUFFIX || latest }}
+      IMAGE_TAG_SUFFIX: ${{ vars.IMAGE_TAG_SUFFIX || "latest" }}
       ENVIRONMENT: ${{ github.event.pull_request.base.ref }}
       AWS_ECR_REPOSITORY: ${{ github.event.pull_request.base.ref == 'production' && vars.AWS_PROD_ECR_REPOSITORY || vars.AWS_DEV_ECR_REPOSITORY }}
       AWS_REGION: ${{ github.event.pull_request.base.ref == 'production' && vars.AWS_PROD_REGION || vars.AWS_DEV_REGION }}

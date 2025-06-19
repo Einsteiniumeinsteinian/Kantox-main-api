@@ -15,6 +15,6 @@ jobs:
   #   uses: ./.github/workflows/application_code_test.yaml
   test_image_deployment: 
     name: Test Image Deployment
-    needs: application_code_test
+    # needs: application_code_test
     uses: ./.github/workflows/test_image_deployment.yaml
     

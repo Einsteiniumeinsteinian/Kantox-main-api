@@ -31,6 +31,9 @@ jobs:
     name: Re-tag Current Dev Image from latest
     uses: ./.github/workflows/re_tag_current_image.yaml
     needs: test_image_deployment
+    permissions:
+      id-token: write
+      contents: read
     with:
       AWS_ECR_REPOSITORY: ${{ github.event.pull_request.base.ref == 'production' && vars.AWS_PROD_ECR_REPOSITORY || vars.AWS_DEV_ECR_REPOSITORY }}
       AWS_REGION: ${{ github.event.pull_request.base.ref == 'production' && vars.AWS_PROD_REGION || vars.AWS_DEV_REGION }}
@@ -41,6 +44,9 @@ jobs:
     name: Push to Dev ecr registry
     needs: re_tag_current_latest
     uses: ./.github/workflows/push_image_to_ecr.yaml
+    permissions:
+      id-token: write
+      contents: read
     with:
       IMAGE_TAG_SUFFIX: ${{ vars.IMAGE_TAG_SUFFIX }}
       ENVIRONMENT: ${{ github.event.pull_request.base.ref }}

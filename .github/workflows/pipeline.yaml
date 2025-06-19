@@ -7,7 +7,10 @@ on:
       - closed
     branches:
       - Development
+      - development
       - production
+      - Production
+      - main
       - feat/github-workflow
       - 'release*'
     paths-ignore:
@@ -15,7 +18,6 @@ on:
       - 'docs'
       - '.dockerignore'
       - '.gitignore'
-      - 'Makefile'
 
 jobs:
   # application_code_test: (for application tests)
@@ -49,18 +51,18 @@ jobs:
       AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
       DOCKERFILE_PATH: ${{ vars.DOCKERFILE_PATH }}
 
-  deploy-to-eks:
-    uses: ./.github/workflows/eks-deploy.yaml
-    with:
-      cluster-name: ${{ vars.CLUSTER_NAME }}
-      region: ${{ vars.AWS_REGION }}
-      deployment-name: ${{ vars.DEPLOYMENT_NAME }}
-      namespace: ${{ vars.K8S_NAMESPACE }}
-      configmap-name: ${{ vars.CONFIGMAP_NAME }}
-      version-key: ${{ vars.VERSION_KEY }}
-      image-tag: ${{ github.sha }}${{ vars.IMAGE_TAG_SUFFIX }}
-      ecr-repository: ${{ vars.ECR_REPOSITORY }}
-      aws-role-arn: ${{ vars.AWS_ROLE_ARN }}
+  # deploy-to-eks:
+  #   uses: ./.github/workflows/eks-deploy.yaml
+  #   with:
+  #     cluster-name: ${{ vars.CLUSTER_NAME }}
+  #     region: ${{ vars.AWS_REGION }}
+  #     deployment-name: ${{ vars.DEPLOYMENT_NAME }}
+  #     namespace: ${{ vars.K8S_NAMESPACE }}
+  #     configmap-name: ${{ vars.CONFIGMAP_NAME }}
+  #     version-key: ${{ vars.VERSION_KEY }}
+  #     image-tag: ${{ github.sha }}${{ vars.IMAGE_TAG_SUFFIX }}
+  #     ecr-repository: ${{ vars.ECR_REPOSITORY }}
+  #     aws-role-arn: ${{ vars.AWS_ROLE_ARN }}
 
   # notify-slack:
   #   name: Notify Slack

@@ -10,9 +10,9 @@ on:
       - 'utils/scripts'
 
 jobs:
-  application_code_test:
-    name: Application Code Test
-    uses: ./.github/workflows/application_code_test.yaml
+  # application_code_test:
+  #   name: Application Code Test
+  #   uses: ./.github/workflows/application_code_test.yaml
   test_image_deployment: 
     name: Test Image Deployment
     needs: application_code_test

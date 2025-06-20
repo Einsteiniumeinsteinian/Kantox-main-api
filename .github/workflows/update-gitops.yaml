@@ -100,7 +100,7 @@ jobs:
         echo "$TAGS"
 
         # Find matching $ENV-<version> tag
-        MATCHING_TAG=$(echo "$TAGS" | grep -E "^${ENV}-[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -n 1)
+        MATCHING_TAG=$(echo "$TAGS" | grep -E "^${ENV}-v[0-9]+$" | sort -V | tail -n 1)
 
         if [[ -z "$MATCHING_TAG" ]]; then
           echo "❌ No matching tag found for environment '$ENV'"
@@ -155,10 +155,12 @@ jobs:
         cd gitops-repo
         APP_FILE="argocd/applications/${{ inputs.APP_NAME }}-application.yaml"
         VERSION="${{ env.VERSION }}"
+        VERSION_NUMBER="${{ env.VERSION_NUMBER }}"
 
         echo "🔧 Updating ArgoCD application parameters..."
         echo "📊 Triggered by: ${{ github.repository }}@${{ github.sha }}"
         echo "🏷️ Updating to version: $VERSION"
+        echo "🏷️ Updating to version: $VERSION_NUMBER"
 
         # Create backup
         cp "$APP_FILE" "$APP_FILE.backup"
@@ -168,7 +170,7 @@ jobs:
 
         # Update both image.tag and config.serviceVersion parameters
         sed -i '/name: image\.tag/,/value:/ s|value: ".*"|value: "'"$VERSION"'"|' "$APP_FILE"
-        sed -i '/name: config\.serviceVersion/,/value:/ s|value: ".*"|value: "'"$VERSION"'"|' "$APP_FILE"
+        sed -i '/name: config\.serviceVersion/,/value:/ s|value: ".*"|value: "'"$VERSION_NUMBER"'"|' "$APP_FILE"
 
         # Verify changes were made
         if cmp -s "$APP_FILE" "$APP_FILE.backup"; then

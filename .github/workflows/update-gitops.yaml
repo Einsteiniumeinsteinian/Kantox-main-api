@@ -35,6 +35,10 @@ on:
 jobs:
   update-argocd:
     runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
     
     steps:
     - name: Configure AWS credentials via OIDC

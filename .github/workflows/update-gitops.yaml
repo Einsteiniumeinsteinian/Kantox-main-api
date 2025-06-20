@@ -110,6 +110,8 @@ jobs:
 
     - name: Validate ArgoCD application file exists
       run: |
+        ls -la
+        ls -la gitops-repo
         APP_FILE="gitops-repo/argocd/applications/${{ inputs.APP_NAME }}-application.yaml"
         if [[ ! -f "$APP_FILE" ]]; then
           echo "❌ Error: Application file not found: $APP_FILE"
@@ -121,9 +123,9 @@ jobs:
 
     - name: Update ArgoCD Application parameters
       run: |
-        cd gitops-repo                                     # 🔧 FIX: Work in correct directory
+        cd gitops-repo
         APP_FILE="argocd/applications/${{ inputs.APP_NAME }}-application.yaml"
-        VERSION="${{ env.VERSION }}"                       # 🔧 FIX: Now VERSION is properly set
+        VERSION="${{ env.VERSION }}"
 
         echo "🔧 Updating ArgoCD application parameters..."
         echo "📊 Triggered by: ${{ github.repository }}@${{ github.sha }}"

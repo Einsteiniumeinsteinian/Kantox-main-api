@@ -169,7 +169,7 @@ jobs:
         cat "$APP_FILE.backup"
 
         # Update both image.tag and config.serviceVersion parameters
-        sed -i '/name: image\.tag/,/value:/ s|value: ".*"|value: "'"$VERSION"'"|' "$APP_FILE"
+        sed -i '/- name: app\.image\.tag/{n; s|value: ".*"|value: "'"$VERSION"'"|;}' "$APP_FILE"
         sed -i '/name: config\.serviceVersion/,/value:/ s|value: ".*"|value: "'"$VERSION_NUMBER"'"|' "$APP_FILE"
 
         # Verify changes were made

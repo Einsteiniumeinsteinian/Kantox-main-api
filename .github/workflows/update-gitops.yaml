@@ -24,6 +24,15 @@ on:
         required: true
         type: string
         description: 'AWS IAM Role ARN for OIDC authentication'
+      ENVIRONMENT:
+        required: true
+        type: string
+        description: 'Deployment Environment'
+      IMAGE_TAG_SUFFIX:
+        required: false
+        type: string
+        description: 'Additional image tag to apply'
+        default: 'latest'
     secrets:
       APP_ID:
         description: 'GitHub App ID'
@@ -61,31 +70,51 @@ jobs:
     - name: Determine latest version
       id: determine-version
       run: |
-        echo "🔍 Fetching latest version tag..."
+        echo "🔍 Fetching tags for image with tag '${{ inputs.IMAGE_TAG_SUFFIX }}'..."
 
-        # Get all image tags from ECR
-        ALL_TAGS=$(aws ecr describe-images \
+        IMAGE_TAG="${{ inputs.IMAGE_TAG_SUFFIX }}"
+        ENV="${{ inputs.ENVIRONMENT }}"
+
+        # Get the digest of the image tagged with IMAGE_TAG
+        DIGEST=$(aws ecr describe-images \
           --repository-name "${{ inputs.AWS_ECR_REPOSITORY }}" \
           --region "${{ inputs.AWS_REGION }}" \
-          --query 'imageDetails[].imageTags[]' \
-          --output json 2>/dev/null | jq -r '.[]' 2>/dev/null || echo "")
+          --query "imageDetails[?contains(imageTags, \`${IMAGE_TAG}\`)].imageDigest" \
+          --output text)
 
-        echo "All tags found in ECR:"
-        echo "$ALL_TAGS"
-
-        # Extract version tags (v followed by digits) and find the highest
-        LATEST_VERSION=$(echo "$ALL_TAGS" | grep -oP '^v\d+(\.\d+)*$' | sort -V | tail -n 1 || echo "v0")
-        
-        # If no version found, try different pattern (v1.20250619.123)
-        if [[ "$LATEST_VERSION" == "v0" ]]; then
-          LATEST_VERSION=$(echo "$ALL_TAGS" | grep -oP '^v\d+\.\d+\.\d+$' | sort -V | tail -n 1 || echo "v1.0.0")
+        if [[ -z "$DIGEST" ]]; then
+          echo "❌ Could not find image with tag '$IMAGE_TAG'"
+          exit 1
         fi
 
-        echo "✅ Latest version found: $LATEST_VERSION"
+        echo "✅ Found image digest for '$IMAGE_TAG': $DIGEST"
 
-        # 🔧 FIX: Set VERSION (not LATEST_VERSION) for later use
-        echo "VERSION=$LATEST_VERSION" >> $GITHUB_ENV
-        echo "LATEST_VERSION=$LATEST_VERSION" >> $GITHUB_ENV
+        # Get all tags for that digest
+        TAGS=$(aws ecr describe-images \
+          --repository-name "${{ inputs.AWS_ECR_REPOSITORY }}" \
+          --region "${{ inputs.AWS_REGION }}" \
+          --query "imageDetails[?imageDigest=='$DIGEST'].imageTags[]" \
+          --output json | jq -r '.[]')
+
+        echo "📦 All tags for '$IMAGE_TAG' digest:"
+        echo "$TAGS"
+
+        # Find matching $ENV-<version> tag
+        MATCHING_TAG=$(echo "$TAGS" | grep -E "^${ENV}-[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -n 1)
+
+        if [[ -z "$MATCHING_TAG" ]]; then
+          echo "❌ No matching tag found for environment '$ENV'"
+          exit 1
+        fi
+
+        # Extract version number
+        VERSION_NUMBER="${MATCHING_TAG#${ENV}-}"
+
+        echo "✅ Matched tag: $MATCHING_TAG"
+        echo "🔢 Extracted version number: $VERSION_NUMBER"
+
+        echo "VERSION=$MATCHING_TAG" >> $GITHUB_ENV
+        echo "VERSION_NUMBER=$VERSION_NUMBER" >> $GITHUB_ENV
 
     - name: Extract repository name
       id: extract-repo

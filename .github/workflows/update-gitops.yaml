@@ -20,6 +20,10 @@ on:
         required: true
         type: string
         description: 'GitOps Repo'
+      AWS_ROLE_ARN:
+        required: true
+        type: string
+        description: 'AWS IAM Role ARN for OIDC authentication'
     secrets:
       APP_ID:
         description: 'GitHub App ID'
@@ -27,19 +31,17 @@ on:
       PRIVATE_KEY:
         description: 'GitHub App private key'
         required: true
-      AWS_ROLE_ARN:
-        description: 'AWS Role ARN for ECR access'
-        required: true
 
 jobs:
   update-argocd:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Configure AWS credentials
+    - name: Configure AWS credentials via OIDC
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        role-to-assume: ${{ inputs.AWS_ROLE_ARN }}
+        role-session-name: github-actions-ecr-deploy
         aws-region: ${{ inputs.AWS_REGION }}
 
     - name: Validate inputs

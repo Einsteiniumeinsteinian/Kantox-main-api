@@ -58,6 +58,9 @@ jobs:
   git_ops:
     needs: push_to_ecr
     uses: ./.github/workflows/update-gitops.yaml
+    permissions:
+      id-token: write
+      contents: read
     with:
       APP_NAME: ${{ vars.APP_NAME }}
       AWS_ECR_REPOSITORY: ${{ github.event.pull_request.base.ref == 'production' && vars.AWS_PROD_ECR_REPOSITORY || vars.AWS_DEV_ECR_REPOSITORY }}

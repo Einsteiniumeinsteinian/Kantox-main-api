@@ -67,6 +67,8 @@ jobs:
       AWS_REGION: ${{ github.event.pull_request.base.ref == 'production' && vars.AWS_PROD_REGION || vars.AWS_DEV_REGION }}
       GIT_OPS_REPOSITORY:  ${{ vars.GIT_OPS_REPOSITORY }}
       AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+      IMAGE_TAG_SUFFIX: ${{ vars.IMAGE_TAG_SUFFIX || 'latest' }}
+      ENVIRONMENT: ${{ github.event.pull_request.base.ref }}
     secrets:
       APP_ID: ${{ secrets.APP_ID }}
       PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
